@@ -432,7 +432,13 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 }
 
 func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool, recreate bool) error {
-	patch, patchType, err := createPatch(target, currentObj)
+	helper := resource.NewHelper(target.Client, target.Mapping)
+	currentClusterObj, err := helper.Get(target.Namespace, target.Name, target.Export)
+	if err != nil {
+		return fmt.Errorf("failed to get current configuration from cluster: %s", err)
+	}
+
+	patch, patchType, err := createPatch(target, currentClusterObj)
 	if err != nil {
 		return fmt.Errorf("failed to create patch: %s", err)
 	}
@@ -445,7 +451,6 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		}
 	} else {
 		// send patch to server
-		helper := resource.NewHelper(target.Client, target.Mapping)
 
 		obj, err := helper.Patch(target.Namespace, target.Name, patchType, patch)
 		if err != nil {
